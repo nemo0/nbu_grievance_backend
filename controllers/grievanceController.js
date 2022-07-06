@@ -17,6 +17,7 @@ const createNewGrievance = async (req, res) => {
   }
 
   try {
+    const comments = req.body.comments;
     const result = await Grievance.create({
       grievanceTitle: req.body.title,
       grievanceDescription: req.body.description,
@@ -29,7 +30,6 @@ const createNewGrievance = async (req, res) => {
       grievanceDepartment: req.body.department,
       grievanceCreatedBy: req.user,
     });
-
     res.status(201).json(result);
   } catch (err) {
     res.status(500).json({ message: err });
@@ -48,6 +48,15 @@ const updateGrievance = async (req, res) => {
       .status(204)
       .json({ message: `No grievance matches ID ${req.body.id}.` });
   }
+  const grievanceComments = grievance.grievanceComments.map((comment) => {
+    const commentMapped = {
+      comment: comment.comment,
+      commentDate: comment.commentDate,
+      commentBy: req.user._id,
+    };
+    return commentMapped;
+  });
+  console.log(grievanceComments);
   if (req.body?.title) grievance.grievanceTitle = req.body.title;
   if (req.body?.description)
     grievance.grievanceDescription = req.body.description;
@@ -60,6 +69,7 @@ const updateGrievance = async (req, res) => {
   if (req.body?.department) grievance.grievanceDepartment = req.body.department;
   if (req.body?.createdBy) grievance.grievanceCreatedBy = req.user;
   if (req.body?.updatedBy) grievance.grievanceUpdatedBy = req.body.updatedBy;
+  if (req.body?.comments) grievance.grievanceComments = grievanceComments;
   const result = await grievance.save();
   res.json(result);
 };
@@ -151,6 +161,54 @@ const getGrievanceByType = async (req, res) => {
   res.json(grievances);
 };
 
+const getComments = async (req, res) => {
+  if (!req.params.id)
+    return res.status(400).json({ message: 'Grievance ID required.' });
+
+  const grievance = await Grievance.findOne({ _id: req.params.id }).exec();
+  if (!grievance) {
+    return res
+      .status(204)
+      .json({ message: `No grievance matches ID ${req.body.id}.` });
+  }
+  const comments = grievance.grievanceComments.map(async (comment) => {
+    // const user = await User.findOne({ _id: comment._id }).exec();
+    const commentUser = await User.findById(comment._id).exec();
+    console.log(comment);
+    console.log(commentUser);
+    if (comment.user === req.user) {
+      const comment = {
+        _id: comment._id,
+        user: commentUser.username,
+      };
+      return comment;
+    }
+  });
+  res.json(comments);
+};
+
+const addComment = async (req, res) => {
+  if (!req.params.id)
+    return res.status(400).json({ message: 'Grievance ID required.' });
+
+  const grievance = await Grievance.findOne({ _id: req.params.id }).exec();
+  if (!grievance) {
+    return res
+      .status(204)
+      .json({ message: `No grievance matches ID ${req.body.id}.` });
+  }
+  const commentByUserId = await User.findOne({ username: req.user }).exec();
+  const comment = {
+    comment: req.body.comment,
+    commentDate: new Date(),
+    commentBy: commentByUserId._id,
+    commentByName: req.user,
+  };
+  grievance.grievanceComments.push(comment);
+  const result = await grievance.save();
+  res.json(result);
+};
+
 module.exports = {
   getAllGrievances,
   createNewGrievance,
@@ -161,4 +219,6 @@ module.exports = {
   getGrievanceByDepartment,
   getGrievanceByPriority,
   getGrievanceByType,
+  getComments,
+  addComment,
 };

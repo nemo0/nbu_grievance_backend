@@ -26,4 +26,20 @@ router
   .put(verifyRoles(ROLES_LIST.Admin), grievanceController.updateGrievance)
   .delete(verifyRoles(ROLES_LIST.Admin), grievanceController.deleteGrievance);
 
+router
+  .route('/comments/:id')
+  .get(
+    verifyRoles(ROLES_LIST.Admin, ROLES_LIST.User),
+    grievanceController.getComments
+  )
+  .post(
+    verifyRoles(
+      ROLES_LIST.Admin,
+      ROLES_LIST.User,
+      ROLES_LIST.Editor,
+      ROLES_LIST.Department
+    ),
+    grievanceController.addComment
+  );
+
 module.exports = router;

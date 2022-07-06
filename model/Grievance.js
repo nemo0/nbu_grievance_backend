@@ -11,6 +11,12 @@ const Comment = new Schema({
     type: Schema.Types.ObjectId,
     ref: 'User',
   },
+  date: {
+    type: Date,
+  },
+  username: {
+    type: String,
+  },
 });
 
 const Grievance = new Schema({
@@ -55,8 +61,19 @@ const Grievance = new Schema({
   },
   grievanceComments: [
     {
-      type: Schema.Types.ObjectId,
-      ref: Comment,
+      comment: {
+        type: String,
+      },
+      commentBy: {
+        type: String,
+      },
+      commentByName: {
+        type: String,
+      },
+      commentDate: {
+        type: Date,
+        default: Date.now,
+      },
     },
   ],
 });

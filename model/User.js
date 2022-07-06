@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
+const Grievance = require('./Grievance');
+
 const userSchema = new Schema({
   username: {
     type: String,
@@ -27,6 +29,12 @@ const userSchema = new Schema({
     type: String,
     required: true,
   },
+  comments: [
+    {
+      type: Schema.Types.ObjectId,
+      ref: 'Grievance',
+    },
+  ],
   refreshToken: String,
 });
 
