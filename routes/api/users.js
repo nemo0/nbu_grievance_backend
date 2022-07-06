@@ -9,11 +9,22 @@ router
   .get(
     verifyRoles(ROLES_LIST.Admin, ROLES_LIST.User),
     usersController.getAllUsers
-  )
-  .delete(verifyRoles(ROLES_LIST.Admin), usersController.deleteUser);
+  );
+
+router.get(
+  '/profile',
+  verifyRoles(
+    ROLES_LIST.Admin,
+    ROLES_LIST.Department,
+    ROLES_LIST.Editor,
+    ROLES_LIST.User
+  ),
+  usersController.getProfile
+);
 
 router
   .route('/:id')
-  .get(verifyRoles(ROLES_LIST.Admin), usersController.getUser);
+  .get(verifyRoles(ROLES_LIST.Admin), usersController.getUser)
+  .delete(verifyRoles(ROLES_LIST.Admin), usersController.deleteUser);
 
 module.exports = router;

@@ -31,8 +31,18 @@ const getUser = async (req, res) => {
   res.json(user);
 };
 
+const getProfile = async (req, res) => {
+  const username = req.user;
+  const user = await User.findOne({ username }).exec();
+  if (!user) {
+    return res.status(204).json({ message: `User ${username} not found` });
+  }
+  res.json(user);
+};
+
 module.exports = {
   getAllUsers,
   deleteUser,
   getUser,
+  getProfile,
 };

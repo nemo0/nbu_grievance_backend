@@ -2,6 +2,8 @@ const { logger } = require('../middleware/logEvents');
 const Grievance = require('../model/Grievance');
 const User = require('../model/User');
 
+const { prioritize } = require('../utils/priority');
+
 const getAllGrievances = async (req, res) => {
   const grievances = await Grievance.find();
   if (!grievances)
@@ -18,12 +20,13 @@ const createNewGrievance = async (req, res) => {
 
   try {
     const comments = req.body.comments;
+    const priority = prioritize(req.body.description);
     const result = await Grievance.create({
       grievanceTitle: req.body.title,
       grievanceDescription: req.body.description,
-      grievanceStatus: 'open',
+      grievanceStatus: 'Open',
       grievanceType: req.body.type,
-      grievancePriority: req.body.priority,
+      grievancePriority: priority,
       grievanceDate: new Date(),
       grievanceUpdatedAt: new Date(),
       grievanceUpdatedBy: req.body.createdBy,
@@ -96,19 +99,17 @@ const getGrievance = async (req, res) => {
   const grievanceCreator = await User.findOne({
     username: grievance.grievanceCreatedBy,
   }).exec();
+  const isAdmin = await Object.keys(grievanceCreator.roles).includes('Admin');
+
   if (!grievance) {
     return res
       .status(204)
-      .json({ message: `No grievance matches ID ${req.body.id}.` });
-  } else if (
-    grievance.grievanceCreatedBy !== req.user ||
-    !grievanceCreator.roles['Admin']
-  ) {
-    return res
-      .status(403)
-      .json({ message: `You are not authorized to view this grievance.` });
+      .json({ message: `No grievance matches ID ${req.params.id}.` });
+  } else if (isAdmin) {
+    res.json(grievance);
+  } else if (grievance.grievanceCreatedBy === req.user) {
+    res.json(grievance);
   }
-  res.json(grievance);
 };
 
 const getGrievanceByStatus = async (req, res) => {
@@ -161,32 +162,6 @@ const getGrievanceByType = async (req, res) => {
   res.json(grievances);
 };
 
-const getComments = async (req, res) => {
-  if (!req.params.id)
-    return res.status(400).json({ message: 'Grievance ID required.' });
-
-  const grievance = await Grievance.findOne({ _id: req.params.id }).exec();
-  if (!grievance) {
-    return res
-      .status(204)
-      .json({ message: `No grievance matches ID ${req.body.id}.` });
-  }
-  const comments = grievance.grievanceComments.map(async (comment) => {
-    // const user = await User.findOne({ _id: comment._id }).exec();
-    const commentUser = await User.findById(comment._id).exec();
-    console.log(comment);
-    console.log(commentUser);
-    if (comment.user === req.user) {
-      const comment = {
-        _id: comment._id,
-        user: commentUser.username,
-      };
-      return comment;
-    }
-  });
-  res.json(comments);
-};
-
 const addComment = async (req, res) => {
   if (!req.params.id)
     return res.status(400).json({ message: 'Grievance ID required.' });
@@ -209,6 +184,31 @@ const addComment = async (req, res) => {
   res.json(result);
 };
 
+const closeGrievance = async (req, res) => {
+  if (!req.params.id) {
+    return res.status(400).json({ message: 'Grievance ID required.' });
+  }
+  const grievance = await Grievance.findOne({ _id: req.params.id }).exec();
+  if (!grievance) {
+    return res
+      .status(204)
+      .json({ message: `No grievance matches ID ${req.body.id}.` });
+  }
+  grievance.grievanceStatus = 'Closed';
+  const result = await grievance.save();
+  res.json(result);
+};
+
+const myGrievances = async (req, res) => {
+  // const user = await findUserByName(req.user);
+  const grievances = await Grievance.find({
+    grievanceCreatedBy: req.user,
+  }).exec();
+  if (!grievances)
+    return res.status(204).json({ message: 'No grievances found.' });
+  return res.status(200).json(grievances);
+};
+
 module.exports = {
   getAllGrievances,
   createNewGrievance,
@@ -219,6 +219,7 @@ module.exports = {
   getGrievanceByDepartment,
   getGrievanceByPriority,
   getGrievanceByType,
-  getComments,
   addComment,
+  closeGrievance,
+  myGrievances,
 };
