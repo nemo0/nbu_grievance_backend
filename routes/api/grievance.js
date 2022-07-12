@@ -3,6 +3,7 @@ const router = express.Router();
 const grievanceController = require('../../controllers/grievanceController');
 const ROLES_LIST = require('../../config/roles_list');
 const verifyRoles = require('../../middleware/verifyRoles');
+const { verify } = require('jsonwebtoken');
 
 router
   .route('/')
@@ -39,6 +40,13 @@ router
   .delete(verifyRoles(ROLES_LIST.Admin), grievanceController.deleteGrievance);
 
 router
+  .route('/department/my')
+  .get(
+    verifyRoles(ROLES_LIST.Admin, ROLES_LIST.Department),
+    grievanceController.getGrievanceByMyDepartment
+  );
+
+router
   .route('/comments/:id')
   .post(
     verifyRoles(
@@ -53,5 +61,17 @@ router
 router
   .route('/close/:id')
   .put(verifyRoles(ROLES_LIST.Admin), grievanceController.closeGrievance);
+
+router
+  .route('/mail/:id')
+  .post(
+    verifyRoles(
+      ROLES_LIST.Admin,
+      ROLES_LIST.Department,
+      ROLES_LIST.Editor,
+      ROLES_LIST.User
+    ),
+    grievanceController.sendMailToCreator
+  );
 
 module.exports = router;

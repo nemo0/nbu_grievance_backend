@@ -1,6 +1,7 @@
 const { logger } = require('../middleware/logEvents');
 const Grievance = require('../model/Grievance');
 const User = require('../model/User');
+const { sendMail } = require('../utils/email');
 
 const { prioritize } = require('../utils/priority');
 
@@ -33,6 +34,8 @@ const createNewGrievance = async (req, res) => {
       grievanceDepartment: req.body.department,
       grievanceCreatedBy: req.user,
     });
+    const user = await User.findOne({ username: req.user }).exec();
+    await sendMail(req.body.title, user.email, req.body.description);
     res.status(201).json(result);
   } catch (err) {
     res.status(500).json({ message: err });
@@ -124,14 +127,12 @@ const getGrievanceByStatus = async (req, res) => {
   res.json(grievances);
 };
 
-const getGrievanceByDepartment = async (req, res) => {
-  if (!req.body.department)
-    return res
-      .status(400)
-      .json({ message: 'Department parameter is required.' });
-
+const getGrievanceByMyDepartment = async (req, res) => {
+  const myProfile = await User.findOne({ username: req.user }).exec();
+  const department = myProfile.department;
+  console.log(department);
   const grievances = await Grievance.find({
-    grievanceDepartment: req.body.department,
+    grievanceDepartment: department,
   }).exec();
   if (!grievances)
     return res.status(204).json({ message: 'No grievances found.' });
@@ -181,6 +182,10 @@ const addComment = async (req, res) => {
   };
   grievance.grievanceComments.push(comment);
   const result = await grievance.save();
+  const user = await User.findOne({ username: req.user }).exec();
+  const subject = `Comment Added for ${grievance.grievanceTitle}`;
+  await sendMail(subject, user.email, comment.comment);
+
   res.json(result);
 };
 
@@ -196,6 +201,12 @@ const closeGrievance = async (req, res) => {
   }
   grievance.grievanceStatus = 'Closed';
   const result = await grievance.save();
+  const grievanceCreator = await User.findOne({
+    username: grievance.grievanceCreatedBy,
+  }).exec();
+  const subject = `Grievance Closed for ${grievance.grievanceTitle}`;
+  const message = `Grievance Closed for ${grievance.grievanceTitle}. Please check the grievance status or contact support if you have any questions.`;
+  await sendMail(subject, grievanceCreator.email, message);
   res.json(result);
 };
 
@@ -209,6 +220,30 @@ const myGrievances = async (req, res) => {
   return res.status(200).json(grievances);
 };
 
+const sendMailToCreator = async (req, res) => {
+  if (!req.params.id)
+    return res.status(400).json({ message: 'Grievance ID required.' });
+  const grievance = await Grievance.findOne({ _id: req.params.id }).exec();
+  const grievanceCreator = await User.findOne({
+    username: grievance.grievanceCreatedBy,
+  }).exec();
+  const creatorEmail = grievanceCreator.email;
+  const subject = 'An Update About a Grievance';
+  const message = `You received an update from the Grievance ${grievance.grievanceTitle}`;
+  try {
+    console.log(creatorEmail);
+    await sendMail(subject, creatorEmail, message);
+    res.json({
+      message: 'Email sent.',
+      referenceGrievance: grievance._id,
+      creatorEmail: creatorEmail,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: 'Error sending email.' });
+  }
+};
+
 module.exports = {
   getAllGrievances,
   createNewGrievance,
@@ -216,10 +251,11 @@ module.exports = {
   deleteGrievance,
   getGrievance,
   getGrievanceByStatus,
-  getGrievanceByDepartment,
+  getGrievanceByMyDepartment,
   getGrievanceByPriority,
   getGrievanceByType,
   addComment,
   closeGrievance,
   myGrievances,
+  sendMailToCreator,
 };

@@ -8,3 +8,8 @@
     - `REFRESH_TOKEN_SECRET` - The secret for the refresh token
 
 - Run `npm run dev` to start the server
+
+### Updates Required:
+- Setup two different dashboards for different roles
+    - Setup a dashboard for the admin user
+    - Setup a dashboard for the regular user
