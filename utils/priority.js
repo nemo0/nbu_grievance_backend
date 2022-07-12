@@ -6,37 +6,27 @@ const SpellCorrector = require('spelling-corrector');
 const spellCorrector = new SpellCorrector();
 spellCorrector.loadDictionary();
 
-const prioritize = (text) => {
-  const lexedReview = aposToLexForm(text);
-  const casedReview = lexedReview.toLowerCase();
+const prioritize = async (text) => {
+  const lexedText = await aposToLexForm(text);
+  const casedText = lexedText.toLowerCase();
 
-  const alphaOnlyReview = casedReview.replace(/[^a-zA-Z\s]+/g, '');
+  const alphaOnlyText = casedText.replace(/[^a-zA-Z\s]+/g, '');
 
-  // tokenize review
   const { WordTokenizer } = natural;
   const tokenizer = new WordTokenizer();
-  const tokenizedReview = tokenizer.tokenize(alphaOnlyReview);
+  const tokenizedText = tokenizer.tokenize(alphaOnlyText);
 
-  // spell correction
-  tokenizedReview.forEach((word, index) => {
-    tokenizedReview[index] = spellCorrector.correct(word);
+  tokenizedText.forEach((word, index) => {
+    tokenizedText[index] = spellCorrector.correct(word);
   });
 
-  // remove stopwords
-  const filteredReview = stopword.removeStopwords(tokenizedReview);
+  const filteredText = stopword.removeStopwords(tokenizedText);
 
   const { SentimentAnalyzer, PorterStemmer } = natural;
   const analyzer = new SentimentAnalyzer('English', PorterStemmer, 'afinn');
+  const analysis = analyzer.getSentiment(filteredText);
 
-  const analysis = analyzer.getSentiment(filteredReview);
-
-  if (analysis.score > 0) {
-    return 'High';
-  } else if (analysis.score < 0) {
-    return 'Low';
-  } else {
-    return 'Medium';
-  }
+  return analysis > 0 ? 'Low' : analysis < 0 ? 'High' : 'Medium';
 };
 
 module.exports = { prioritize };

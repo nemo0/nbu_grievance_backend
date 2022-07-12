@@ -21,7 +21,7 @@ const createNewGrievance = async (req, res) => {
 
   try {
     const comments = req.body.comments;
-    const priority = prioritize(req.body.description);
+    const priority = await prioritize(req.body.description);
     const result = await Grievance.create({
       grievanceTitle: req.body.title,
       grievanceDescription: req.body.description,
